@@ -1,0 +1,19 @@
+# file: roles/hostname/tasks/main.yml
+- name: update the runtime hostname
+  sudo: true
+  command: sudo hostname -b "{{hostname}}"
+  when: hostname and not hostname == ansible_hostname
+
+- name: update the permanent hostname
+  sudo: true
+  template: src=etc_hostname.j2 dest=/etc/hostname owner=root group=root mode=064
+
+- name: update references to new hostname
+  sudo: true
+  lineinfile: >
+    dest=/etc/hosts
+    regexp="^127.0.1.1\s*{{ansible_fqdn}}\s*{{ansible_hostname}}"
+    insertafter="^127.0.0.1\s*localhost$"
+    line="127.0.1.1 {% if fqdn is defined %}{{fqdn}} {% else %}{{ansible_fqdn}}{% endif %}{{hostname}}"
+    state=present
+  when: (hostname is defined and not (hostname == ansible_hostname)) or  (fqdn is defined and not (fqdn == ansible_fqdn))
